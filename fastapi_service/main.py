@@ -12,27 +12,42 @@ from dotenv import load_dotenv
 
 
 import asyncpg
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+# Load environment variables from root .env
+load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
+
+IS_PRODUCTION = (os.getenv("NODE_ENV") or os.getenv("ENVIRONMENT") or "").lower() == "production"
 
 
 app = FastAPI(
     title="InServiceHub API",
     description="FastAPI micro-service for analytics & recommendations",
     version="1.0.0",
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
 )
+
+def configured_origins() -> List[str]:
+    origins = os.getenv("CLIENT_ORIGINS") or os.getenv("CLIENT_URL") or os.getenv("FRONTEND_URL")
+    if origins:
+        return [origin.strip().rstrip("/") for origin in origins.split(",") if origin.strip()]
+    if IS_PRODUCTION:
+        return []
+    return ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]
+
+
+CORS_ORIGINS = configured_origins()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=bool(CORS_ORIGINS),
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Load environment variables from root .env
-load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
 
 LOCAL_DB_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres"}
 
@@ -162,9 +177,9 @@ async def category_stats(db: asyncpg.Connection = Depends(get_db)):
 
 @app.get("/api/providers/top", response_model=List[ProviderOut], tags=["Providers"])
 async def top_providers(
-    limit: int = 10,
-    city: Optional[str] = None,
-    category: Optional[str] = None,
+    limit: int = Query(10, ge=1, le=50),
+    city: Optional[str] = Query(None, max_length=100),
+    category: Optional[str] = Query(None, max_length=100),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Return top-rated providers, optionally filtered by city or category."""
@@ -193,7 +208,7 @@ async def top_providers(
 
 
 @app.get("/api/providers/{provider_id}", tags=["Providers"])
-async def provider_detail(provider_id: int, db: asyncpg.Connection = Depends(get_db)):
+async def provider_detail(provider_id: int = Path(..., ge=1), db: asyncpg.Connection = Depends(get_db)):
     """Get detailed provider information including services and reviews."""
     provider = await db.fetchrow(
         """

@@ -1,8 +1,8 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import './index.css';
 
 // Lazy-load pages for code splitting (better production performance)
@@ -15,6 +15,17 @@ const ProviderDashboard = lazy(() => import('./pages/ProviderDashboard'));
 const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard'));
 const ThankYou = lazy(() => import('./pages/ThankYou'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+
+const ProtectedRoute = ({ children, roles }) => {
+    const { user, loading } = useAuth();
+    const location = useLocation();
+
+    if (loading) return <PageLoader />;
+    if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+    if (roles?.length && !roles.includes(user.role)) return <Navigate to="/" replace />;
+
+    return children;
+};
 
 // Loading spinner for lazy-loaded pages
 const PageLoader = () => (
@@ -58,9 +69,9 @@ function App() {
                                 <Route path="/search" element={<Search />} />
                                 <Route path="/login" element={<Login />} />
                                 <Route path="/register" element={<Register />} />
-                                <Route path="/profile" element={<Profile />} />
-                                <Route path="/provider-dashboard" element={<ProviderDashboard />} />
-                                <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+                                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                                <Route path="/provider-dashboard" element={<ProtectedRoute roles={['provider']}><ProviderDashboard /></ProtectedRoute>} />
+                                <Route path="/customer-dashboard" element={<ProtectedRoute roles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
                                 <Route path="/thank-you" element={<ThankYou />} />
                                 <Route path="*" element={<NotFound />} />
                             </Routes>

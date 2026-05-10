@@ -1,3 +1,4 @@
+require('dotenv').config({ path: '../.env' });
 const bcrypt = require('bcryptjs');
 const { initializeDatabase } = require('./db/postgres');
 
@@ -65,11 +66,11 @@ const seed = async () => {
             { email: 'arjun@example.com', service: 'Appliance Repair', category: 'AC & Appliance Repair', price: 750, experience: 8 },
             { email: 'pooja@example.com', service: 'Carpenter', category: 'Carpentry', price: 500, experience: 5 },
             { email: 'sanjay@example.com', service: 'Painter', category: 'Painting', price: 550, experience: 11 },
-            { email: 'meena@example.com', service: 'Electrician', category: 'Electrical', price: 380, experience: 4 },
-            { email: 'rohit@example.com', service: 'Plumber', category: 'Plumbing', price: 450, experience: 7 },
-            { email: 'neha@example.com', service: 'Cleaning', category: 'Cleaning & Pest Control', price: 400, experience: 3 },
-            { email: 'anil@example.com', service: 'Carpenter', category: 'Carpentry', price: 600, experience: 9 },
-            { email: 'geeta@example.com', service: 'Electrician', category: 'Electrical', price: 420, experience: 6 },
+            { email: 'meena@example.com', service: 'Driver', category: 'Driving', price: 1200, experience: 15 },
+            { email: 'rohit@example.com', service: 'Construction Labour', category: 'Construction', price: 450, experience: 7 },
+            { email: 'neha@example.com', service: 'Mason (Mistri)', category: 'Construction', price: 800, experience: 10 },
+            { email: 'anil@example.com', service: 'Driver', category: 'Driving', price: 1000, experience: 12 },
+            { email: 'geeta@example.com', service: 'Construction Labour', category: 'Construction', price: 500, experience: 6 },
         ];
 
         const providers = users.filter(u => u.role === 'provider');

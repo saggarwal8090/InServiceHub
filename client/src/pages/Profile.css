@@ -132,6 +132,7 @@
     font-size: 1.6rem;
     margin-bottom: 0.3rem;
     color: white;
+    overflow-wrap: anywhere;
 }
 
 .profile-role-badge {
@@ -161,6 +162,7 @@
 .profile-header-stats {
     display: flex;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .stat-box {
@@ -185,7 +187,7 @@
     font-size: 0.72rem;
     opacity: 0.8;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
 }
 
 .btn-edit-profile {
@@ -271,7 +273,7 @@
     font-weight: 600;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0;
 }
 
 .profile-field p {
@@ -279,6 +281,7 @@
     color: #1a1a2e;
     margin: 0;
     padding: 0.5rem 0;
+    overflow-wrap: anywhere;
 }
 
 .field-readonly {
@@ -453,6 +456,11 @@
 
 /* Responsive */
 @media (max-width: 640px) {
+    .profile-container {
+        margin: 1rem auto;
+        padding: 0 1rem 2rem;
+    }
+
     .profile-header-card {
         flex-direction: column;
         text-align: center;
@@ -465,6 +473,7 @@
 
     .profile-header-stats {
         justify-content: center;
+        width: 100%;
     }
 
     .btn-edit-profile {

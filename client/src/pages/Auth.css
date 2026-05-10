@@ -5,6 +5,8 @@
     min-height: calc(100vh - 64px);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 2rem;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .auth-card {
@@ -301,8 +303,14 @@
 }
 
 @media (max-width: 480px) {
+    .auth-container {
+        align-items: flex-start;
+        padding: 1rem;
+    }
+
     .auth-card {
         padding: 1.5rem;
+        border-radius: 16px;
     }
 
     .provider-profile-section {

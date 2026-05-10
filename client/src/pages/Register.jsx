@@ -72,8 +72,8 @@ const Register = () => {
             return;
         }
 
-        if (userData.password.length < 6) {
-            setError('Password must be at least 6 characters long.');
+        if (userData.password.length < 8) {
+            setError('Password must be at least 8 characters long.');
             setLoading(false);
             return;
         }
@@ -145,9 +145,9 @@ const Register = () => {
                                 type={showPassword ? 'text' : 'password'}
                                 name="password"
                                 onChange={handleChange}
-                                placeholder="Min 6 characters"
+                                placeholder="Min 8 characters"
                                 required
-                                minLength="6"
+                                minLength="8"
                                 id="register-password"
                             />
                             <button

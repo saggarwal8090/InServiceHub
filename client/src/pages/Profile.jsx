@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -41,15 +41,7 @@ const Profile = () => {
     const [showNewPw, setShowNewPw] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
 
-    useEffect(() => {
-        if (!user) {
-            navigate('/login');
-            return;
-        }
-        fetchProfile();
-    }, [user]);
-
-    const fetchProfile = async () => {
+    const fetchProfile = useCallback(async () => {
         try {
             const API_URL = import.meta.env.VITE_API_URL || '/api';
             const res = await axios.get(`${API_URL}/profile`);
@@ -71,7 +63,15 @@ const Profile = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [navigate]);
+
+    useEffect(() => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        fetchProfile();
+    }, [fetchProfile, navigate, user]);
 
     const showMsg = (text, type = 'success') => {
         setMessage({ text, type });
@@ -106,8 +106,8 @@ const Profile = () => {
             showMsg('❌ New passwords do not match.', 'error');
             return;
         }
-        if (passwordForm.newPassword.length < 6) {
-            showMsg('❌ New password must be at least 6 characters.', 'error');
+        if (passwordForm.newPassword.length < 8) {
+            showMsg('New password must be at least 8 characters.', 'error');
             return;
         }
         setChangingPassword(true);
@@ -329,8 +329,8 @@ const Profile = () => {
                                         value={passwordForm.newPassword}
                                         onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                         required
-                                        minLength="6"
-                                        placeholder="Min 6 characters"
+                                        minLength="8"
+                                        placeholder="Min 8 characters"
                                     />
                                     <button type="button" className="pw-toggle" onClick={() => setShowNewPw(!showNewPw)}>
                                         {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}

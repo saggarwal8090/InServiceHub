@@ -4,6 +4,8 @@
     background-color: #f8f9fa;
     padding: 2rem;
     gap: 2rem;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .sidebar {
@@ -110,12 +112,14 @@
 
 .results-container {
     flex-grow: 1;
+    min-width: 0;
 }
 
 .results-container h2 {
     font-size: 1.6rem;
     margin-bottom: 0.3rem;
     color: #333;
+    overflow-wrap: anywhere;
 }
 
 .results-count {
@@ -126,7 +130,7 @@
 
 .providers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
     gap: 1.5rem;
 }
 
@@ -181,6 +185,7 @@
     .search-page {
         flex-direction: column;
         padding: 1rem;
+        gap: 1rem;
     }
 
     .sidebar {
@@ -235,6 +240,7 @@
 
 .broadcast-card-content {
     flex: 1;
+    min-width: 0;
 }
 
 .broadcast-card-content h3 {
@@ -257,6 +263,7 @@
     margin-top: 0.5rem;
     font-size: 0.8rem;
     opacity: 0.85;
+    flex-wrap: wrap;
 }
 
 .broadcast-card-meta span {
@@ -272,7 +279,7 @@
     font-weight: 600;
     font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
 }
 
 .broadcast-card-btn {
@@ -316,6 +323,21 @@
 .or-divider span {
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
     white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+    .broadcast-card {
+        padding: 1.2rem;
+    }
+
+    .or-divider {
+        gap: 0.6rem;
+    }
+
+    .or-divider span {
+        white-space: normal;
+        text-align: center;
+    }
 }

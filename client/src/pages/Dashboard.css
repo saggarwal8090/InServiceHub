@@ -28,6 +28,7 @@
     align-items: center;
     gap: 1rem;
     font-weight: 600;
+    flex-wrap: wrap;
 }
 
 .btn-online {
@@ -38,6 +39,9 @@
     border: none;
     font-weight: 600;
     transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-online:hover {
@@ -52,6 +56,9 @@
     border: none;
     font-weight: 600;
     transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-offline:hover {
@@ -128,6 +135,13 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.booking-info {
+    flex: 1;
+    min-width: 0;
 }
 
 .booking-info p {
@@ -137,6 +151,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    overflow-wrap: anywhere;
 }
 
 .address {
@@ -151,7 +166,8 @@
     text-transform: uppercase;
     font-weight: 700;
     color: white;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
+    white-space: nowrap;
 }
 
 .status-badge.pending {
@@ -174,6 +190,7 @@
 .booking-actions {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .btn-accept {
@@ -400,19 +417,39 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .dashboard-container {
+        margin: 1rem auto;
+    }
+
     .dashboard-header {
         flex-direction: column;
         align-items: flex-start;
+        padding: 1.2rem;
     }
 
     .booking-card {
         flex-direction: column;
         align-items: flex-start;
+        padding: 1.2rem;
     }
 
     .booking-actions {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: stretch;
+    }
+
+    .booking-actions button {
+        flex: 1;
+        min-width: 132px;
+    }
+
+    .status-toggle,
+    .status-toggle button {
+        width: 100%;
+    }
+
+    .status-toggle button {
+        justify-content: center;
     }
 }
 
@@ -471,7 +508,7 @@
     font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
     margin-bottom: 0.5rem;
 }
 
@@ -524,7 +561,7 @@
     color: #2e7d32;
     font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0;
 }
 
 .provider-detail-name {

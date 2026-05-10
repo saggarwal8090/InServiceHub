@@ -6,10 +6,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUP
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-    console.warn('⚠️ Supabase URL or Service Role Key is missing in .env. Supabase client may not initialize correctly.');
+    console.warn('Supabase URL or Service Role Key is missing. Supabase health checks will be skipped.');
 }
 
 // Admin client to bypass RLS in the backend
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = (supabaseUrl && supabaseServiceKey)
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null;
 
 module.exports = { supabase };

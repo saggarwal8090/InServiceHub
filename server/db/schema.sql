@@ -123,3 +123,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique
 
 CREATE UNIQUE INDEX IF NOT EXISTS provider_details_user_id_unique
   ON provider_details(user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS reviews_booking_id_unique
+  ON reviews(booking_id);
+
+CREATE INDEX IF NOT EXISTS bookings_customer_id_created_at_idx
+  ON bookings(customer_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS bookings_provider_id_created_at_idx
+  ON bookings(provider_id, created_at DESC);

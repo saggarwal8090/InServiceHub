@@ -11,6 +11,7 @@
     align-items: center;
     z-index: 1100;
     padding: 1rem;
+    min-height: 100dvh;
 }
 
 .booking-modal {
@@ -21,8 +22,9 @@
     padding: 2rem;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
     animation: modalIn 0.3s ease-out;
-    max-height: 90vh;
+    max-height: calc(100dvh - 2rem);
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 @keyframes modalIn {
@@ -50,6 +52,7 @@
     margin: 0;
     color: #1a1a2e;
     font-size: 1.15rem;
+    overflow-wrap: anywhere;
 }
 
 .close-btn {
@@ -162,6 +165,7 @@
     font-size: 0.82rem;
     font-weight: 600;
     margin-bottom: 0.6rem;
+    flex-wrap: wrap;
 }
 
 .broadcast-hint {
@@ -183,12 +187,19 @@
 }
 
 @media (max-width: 480px) {
+    .booking-modal-overlay {
+        align-items: flex-start;
+        padding: 0.75rem;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    }
+
     .form-row {
         flex-direction: column;
         gap: 0;
     }
 
     .booking-modal {
-        padding: 1.5rem;
+        padding: 1.2rem;
+        max-height: calc(100dvh - 1.5rem);
     }
 }

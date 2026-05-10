@@ -127,8 +127,11 @@ const Search = () => {
                         <option value="Cleaning">🧹 Cleaning</option>
                         <option value="Carpenter">🪚 Carpenter</option>
                         <option value="Painter">🎨 Painter</option>
-                        <option value="Pest Control">🐛 Pest Control</option>
-                        <option value="Appliance Repair">🔌 Appliance Repair</option>
+                        <option value="Driver">🚗 Driver</option>
+                        <option value="Pest Control">🐜 Pest Control</option>
+                        <option value="Appliance Repair">⚙️ Appliance Repair</option>
+                        <option value="Construction Labour">👷 Construction Labour</option>
+                        <option value="Mason (Mistri)">🧱 Mason (Mistri)</option>
                     </select>
                 </div>
                 <div className="filter-group">

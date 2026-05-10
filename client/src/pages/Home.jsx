@@ -1,34 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Shield, Clock, IndianRupee, Star, Users, ChevronRight, ArrowRight, Phone, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, MapPin, Shield, Clock, IndianRupee, Star, Users, ChevronRight, ArrowRight, Phone, CheckCircle, Sparkles } from 'lucide-react';
 import './Home.css';
 
 const indianCities = [
     'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai',
     'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow',
     'Chandigarh', 'Kochi', 'Indore', 'Bhopal', 'Nagpur',
-    'Surat', 'Vadodara', 'Noida', 'Gurgaon', 'Ghaziabad'
+    'Surat', 'Vadodara', 'Noida', 'Gurgaon', 'Ghaziabad', 'Saharanpur',
 ];
 
 const services = [
-    { value: 'Plumber', label: 'Plumber', icon: '🔧', desc: 'Pipe, tap, leak repairs', img: '/images/service-plumber.png' },
-    { value: 'Electrician', label: 'Electrician', icon: '⚡', desc: 'Wiring, switches, MCB', img: '/images/service-electrician.png' },
-    { value: 'AC Repair', label: 'AC Repair', icon: '❄️', desc: 'Service, gas refill', img: '/images/service-ac-repair.png' },
-    { value: 'Cleaning', label: 'Cleaning', icon: '🧹', desc: 'Deep clean, sanitize', img: '/images/service-cleaning.png' },
-    { value: 'Carpenter', label: 'Carpenter', icon: '🪚', desc: 'Furniture, fittings', img: '/images/service-carpenter.png' },
-    { value: 'Painter', label: 'Painter', icon: '🎨', desc: 'Interior, exterior', img: '/images/service-plumber.png' },
-    { value: 'Pest Control', label: 'Pest Control', icon: '🐛', desc: 'Bugs, termites, rats', img: '/images/service-cleaning.png' },
-    { value: 'Appliance Repair', label: 'Appliance Repair', icon: '🔌', desc: 'Washing machine, fridge', img: '/images/service-electrician.png' },
+    { value: 'Plumber', label: 'Plumber', icon: '🔧', desc: 'Expert pipe, tap & leak repairs', img: '/images/service-plumber.png' },
+    { value: 'Electrician', label: 'Electrician', icon: '⚡', desc: 'Safe wiring & appliance install', img: '/images/service-electrician.png' },
+    { value: 'AC Repair', label: 'AC Repair', icon: '❄️', desc: 'Complete cooling solutions', img: '/images/service-ac-repair.png' },
+    { value: 'Cleaning', label: 'Cleaning', icon: '🧹', desc: 'Deep home & office sanitization', img: '/images/service-cleaning.png' },
+    { value: 'Carpenter', label: 'Carpenter', icon: '🪚', desc: 'Furniture & wood fittings', img: '/images/service-carpenter.png' },
+    { value: 'Painter', label: 'Painter', icon: '🎨', desc: 'Premium interior & exterior painting', img: '/images/service-plumber.png' },
+    { value: 'Driver', label: 'Driver', icon: '🚗', desc: 'Professional chauffeurs for you', img: '/images/service-driver.png' },
+    { value: 'Pest Control', label: 'Pest Control', icon: '🐜', desc: 'Complete pest & insect removal', img: '/images/service-pest-control.png' },
+    { value: 'Appliance Repair', label: 'Appliance Repair', icon: '⚙️', desc: 'Expert fix for all home appliances', img: '/images/service-appliance.png' },
+    { value: 'Construction Labour', label: 'Construction Labour', icon: '👷', desc: 'Reliable workforce for your site', img: '/images/service-plumber.png' },
+    { value: 'Mason (Mistri)', label: 'Mason (Mistri)', icon: '🧱', desc: 'Expert masonry & brickwork', img: '/images/service-plumber.png' },
 ];
 
-// Background slideshow images
 const heroSlides = [
     '/images/hero-banner.png',
     '/images/service-plumber.png',
     '/images/service-electrician.png',
-    '/images/service-carpenter.png',
-    '/images/service-cleaning.png',
-    '/images/service-ac-repair.png',
 ];
 
 const Home = () => {
@@ -36,13 +36,32 @@ const Home = () => {
     const [service, setService] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [stats, setStats] = useState({ providers: '20+', cities: '20+', rating: '4.9' });
     const navigate = useNavigate();
 
-    // Auto-advance background slideshow
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/stats/dashboard');
+                if (res.ok) {
+                    const data = await res.json();
+                    setStats({
+                        providers: data.providers + '+',
+                        cities: data.cities + '+',
+                        rating: data.rating
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to fetch stats:', err);
+            }
+        };
+        fetchStats();
+    }, []);
+
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentSlide(prev => (prev + 1) % heroSlides.length);
-        }, 5000);
+        }, 6000);
         return () => clearInterval(timer);
     }, []);
 
@@ -54,24 +73,14 @@ const Home = () => {
         e.preventDefault();
         if (city && service) {
             navigate(`/search?city=${encodeURIComponent(city)}&service=${encodeURIComponent(service)}`);
-        } else if (!city) {
-            document.querySelector('.search-input')?.focus();
-        } else {
-            document.querySelector('.search-select')?.focus();
         }
-    };
-
-    const selectCity = (c) => {
-        setCity(c);
-        setShowSuggestions(false);
     };
 
     return (
         <div className="home-container">
             {/* ===== HERO ===== */}
             <section className="hero">
-                {/* Background slideshow */}
-                <div className="hero-slideshow" aria-hidden="true">
+                <div className="hero-slideshow">
                     {heroSlides.map((src, i) => (
                         <div
                             key={i}
@@ -82,25 +91,24 @@ const Home = () => {
                 </div>
                 <div className="hero-overlay"></div>
 
-                {/* Floating background images */}
-                <div className="hero-floating-photos" aria-hidden="true">
-                    {heroSlides.slice(0, 6).map((src, i) => (
-                        <div key={i} className={`floating-photo fp-${i + 1}`}>
-                            <img src={src} alt="" loading="lazy" />
-                        </div>
-                    ))}
-                </div>
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="hero-content"
+                >
+                    <div className="hero-badge">
+                        <Sparkles size={14} /> Trusted by 10,000+ homes in India
+                    </div>
+                    <h1>Your Premium <br /><span className="hero-highlight">Home Service Hub</span></h1>
+                    <p>Expert professionals at your doorstep. Verified, punctual, and reliable services for a better living experience.</p>
 
-                <div className="hero-content">
-                    <div className="hero-badge">🇮🇳 Trusted by 10,000+ customers across India</div>
-                    <h1>Home Services,<br /><span className="hero-highlight">Made Simple.</span></h1>
-                    <p>Find verified plumbers, electricians, carpenters & more in your city. Book instantly, pay transparently.</p>
                     <form className="search-box" onSubmit={handleSearch}>
                         <div className="search-input-wrapper">
-                            <MapPin size={18} className="input-icon" />
+                            <MapPin size={20} className="input-icon" />
                             <input
                                 type="text"
-                                placeholder="Your city (e.g. Mumbai)"
+                                placeholder="Select City"
                                 value={city}
                                 onChange={(e) => {
                                     setCity(e.target.value);
@@ -110,132 +118,117 @@ const Home = () => {
                                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                 className="search-input"
                                 autoComplete="off"
-                                id="hero-city-input"
                             />
-                            {showSuggestions && city && filteredCities.length > 0 && (
-                                <div className="city-suggestions">
-                                    {filteredCities.slice(0, 6).map(c => (
-                                        <div key={c} className="suggestion-item" onMouseDown={() => selectCity(c)}>
-                                            <MapPin size={14} /> {c}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            <AnimatePresence>
+                                {showSuggestions && city && filteredCities.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="city-suggestions"
+                                    >
+                                        {filteredCities.slice(0, 6).map(c => (
+                                            <div key={c} className="suggestion-item" onMouseDown={() => setCity(c)}>
+                                                <MapPin size={14} /> {c}
+                                            </div>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
-                        <select
-                            value={service}
-                            onChange={(e) => setService(e.target.value)}
-                            className="search-select"
-                            id="hero-service-select"
-                        >
-                            <option value="">What do you need?</option>
-                            {services.map(s => (
-                                <option key={s.value} value={s.value}>{s.icon} {s.label}</option>
-                            ))}
-                        </select>
-                        <button type="submit" className="search-btn" id="hero-search-btn">
-                            <Search size={18} /> Search
+                        <div className="search-select-wrapper">
+                            <Search size={20} className="input-icon" />
+                            <select
+                                value={service}
+                                onChange={(e) => setService(e.target.value)}
+                                className="search-select"
+                            >
+                                <option value="">What do you need?</option>
+                                {services.map(s => (
+                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <button type="submit" className="search-btn">
+                            Search Now
                         </button>
                     </form>
+
                     <div className="hero-stats">
-                        <div className="stat"><Users size={16} /> <strong>10,000+</strong> Verified Providers</div>
-                        <div className="stat"><Star size={16} /> <strong>4.8</strong> Average Rating</div>
-                        <div className="stat"><MapPin size={16} /> <strong>20+</strong> Cities</div>
+                        <div className="stat"><Users size={16} /> <strong>{stats.providers}</strong> Experts</div>
+                        <div className="stat"><Star size={16} /> <strong>{stats.rating}/5</strong> Rating</div>
+                        <div className="stat"><MapPin size={16} /> <strong>{stats.cities}</strong> Cities</div>
                     </div>
-                </div>
+                </motion.div>
             </section>
 
             {/* ===== HOW IT WORKS ===== */}
             <section className="how-it-works">
-                <h2>How It Works</h2>
-                <p className="section-subtitle">Get help in 3 simple steps</p>
+                <h2 className="section-title">Experience Excellence</h2>
+                <p className="section-subtitle">Simplified booking process for your convenience</p>
+
                 <div className="steps-grid">
-                    <div className="step-card">
-                        <div className="step-number">1</div>
-                        <div className="step-icon"><Search size={28} /></div>
-                        <h3>Search & Select</h3>
-                        <p>Enter your city and select the service you need. Browse available providers or send a request to all.</p>
-                    </div>
-                    <div className="step-arrow"><ArrowRight size={24} /></div>
-                    <div className="step-card">
-                        <div className="step-number">2</div>
-                        <div className="step-icon"><CheckCircle size={28} /></div>
-                        <h3>Book Instantly</h3>
-                        <p>Pick a date & time, describe your problem, and confirm. The provider will accept your request.</p>
-                    </div>
-                    <div className="step-arrow"><ArrowRight size={24} /></div>
-                    <div className="step-card">
-                        <div className="step-number">3</div>
-                        <div className="step-icon"><Phone size={28} /></div>
-                        <h3>Get Service</h3>
-                        <p>Once accepted, you'll see the provider's phone number. Call them directly and get the job done!</p>
-                    </div>
+                    {[
+                        { icon: <Search />, title: "Discover", desc: "Find the best rated professionals near you instantly." },
+                        { icon: <CheckCircle />, title: "Book", desc: "Schedule a time that works for you with transparent pricing." },
+                        { icon: <Phone />, title: "Service", desc: "Get quality service and pay securely after completion." }
+                    ].map((step, i) => (
+                        <motion.div
+                            key={i}
+                            whileHover={{ y: -10 }}
+                            className="step-card"
+                        >
+                            <div className="step-number">{i + 1}</div>
+                            <div className="step-icon">{step.icon}</div>
+                            <h3>{step.title}</h3>
+                            <p>{step.desc}</p>
+                        </motion.div>
+                    ))}
                 </div>
             </section>
 
-            {/* ===== POPULAR SERVICES with Images ===== */}
+            {/* ===== POPULAR SERVICES ===== */}
             <section className="popular-services">
-                <h2>Popular Services</h2>
-                <p className="section-subtitle">Browse our most requested services across India</p>
+                <h2 className="section-title">Our Services</h2>
+                <p className="section-subtitle">Premium solutions for all your home needs</p>
                 <div className="service-grid">
-                    {services.map(s => (
-                        <div
+                    {services.map((s, i) => (
+                        <motion.div
                             key={s.value}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.1 }}
                             className="service-card"
                             onClick={() => navigate(`/search?service=${encodeURIComponent(s.value)}`)}
                         >
                             <div className="service-card-img">
-                                <img src={s.img} alt={s.label} loading="lazy" />
+                                <img src={s.img} alt={s.label} />
                             </div>
                             <span className="service-icon">{s.icon}</span>
                             <h4>{s.label}</h4>
                             <p className="service-desc">{s.desc}</p>
-                            <ChevronRight size={16} className="arrow-icon" />
-                        </div>
+                            <ChevronRight size={20} className="arrow-icon" />
+                        </motion.div>
                     ))}
                 </div>
             </section>
 
             {/* ===== FEATURES ===== */}
-            <section className="features">
-                <h2>Why Choose InServiceHub?</h2>
-                <p className="section-subtitle">India's most trusted service marketplace</p>
+            <section className="features glass-dark">
+                <h2 className="section-title">Why InServiceHub?</h2>
+                <p className="section-subtitle">The gold standard in home service marketplaces</p>
                 <div className="feature-grid">
-                    <div className="feature-card">
-                        <Shield size={32} className="feature-icon" />
-                        <h3>Verified Professionals</h3>
-                        <p>Every provider is background-checked and quality-verified before joining our platform.</p>
-                    </div>
-                    <div className="feature-card">
-                        <Clock size={32} className="feature-icon" />
-                        <h3>Instant Booking</h3>
-                        <p>Book in seconds. Send your request to all providers — the fastest one responds first.</p>
-                    </div>
-                    <div className="feature-card">
-                        <IndianRupee size={32} className="feature-icon" />
-                        <h3>Transparent Pricing</h3>
-                        <p>No hidden charges. See prices upfront in ₹ before you confirm your booking.</p>
-                    </div>
-                    <div className="feature-card">
-                        <Star size={32} className="feature-icon" />
-                        <h3>Rated & Reviewed</h3>
-                        <p>Read real reviews from verified customers. Only book providers you trust.</p>
-                    </div>
-                </div>
-            </section>
-
-            {/* ===== CITIES ===== */}
-            <section className="cities-section">
-                <h2>Available in 20+ Cities</h2>
-                <p className="section-subtitle">Find services in your city — click to explore</p>
-                <div className="cities-grid">
-                    {indianCities.map(c => (
-                        <div
-                            key={c}
-                            className="city-chip"
-                            onClick={() => navigate(`/search?city=${encodeURIComponent(c)}`)}
-                        >
-                            <MapPin size={14} /> {c}
+                    {[
+                        { icon: <Shield />, title: "Verified Pros", desc: "Multi-point background checks for your safety." },
+                        { icon: <Clock />, title: "On-Time", desc: "Punctuality is our promise. 24/7 support available." },
+                        { icon: <IndianRupee />, title: "Fair Pricing", desc: "Upfront quotes with no hidden surprises." },
+                        { icon: <Star />, title: "Top Quality", desc: "Only the highest rated experts make the cut." }
+                    ].map((feature, i) => (
+                        <div key={i} className="feature-card">
+                            <div className="feature-icon">{feature.icon}</div>
+                            <h3>{feature.title}</h3>
+                            <p>{feature.desc}</p>
                         </div>
                     ))}
                 </div>
@@ -246,25 +239,23 @@ const Home = () => {
                 <div className="footer-content">
                     <div className="footer-brand">
                         <h3>🏠 InServiceHub</h3>
-                        <p>India's trusted home services marketplace. Connecting customers with verified professionals since 2024.</p>
+                        <p>Elevating the standard of home services across India. Premium, professional, and purely reliable.</p>
                     </div>
                     <div className="footer-links">
-                        <h4>Quick Links</h4>
+                        <h4>Explore</h4>
                         <a href="/">Home</a>
                         <a href="/search">Find Services</a>
-                        <a href="/register?role=provider">Become a Provider</a>
-                        <a href="/login">Login</a>
+                        <a href="/register?role=provider">Join as Pro</a>
                     </div>
                     <div className="footer-links">
-                        <h4>Services</h4>
-                        <a href="/search?service=Plumber">Plumber</a>
-                        <a href="/search?service=Electrician">Electrician</a>
-                        <a href="/search?service=AC+Repair">AC Repair</a>
-                        <a href="/search?service=Carpenter">Carpenter</a>
+                        <h4>Support</h4>
+                        <a href="/login">Help Center</a>
+                        <a href="/privacy">Privacy Policy</a>
+                        <a href="/terms">Terms of Service</a>
                     </div>
                 </div>
                 <div className="footer-bottom">
-                    <p>© {new Date().getFullYear()} InServiceHub. All rights reserved. Made with ❤️ in India.</p>
+                    <p>© {new Date().getFullYear()} InServiceHub. Crafted for Excellence.</p>
                 </div>
             </footer>
         </div>

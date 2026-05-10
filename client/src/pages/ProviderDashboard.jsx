@@ -47,7 +47,7 @@ const ProviderDashboard = () => {
             setIsOnline(res.data.is_online);
         } catch (error) {
             console.error('Failed to toggle status:', error);
-            setIsOnline(prev => !prev);
+            alert(error.response?.data?.message || 'Unable to update your status. Please try again.');
         }
     };
 
@@ -72,7 +72,7 @@ const ProviderDashboard = () => {
             fetchBookings();
         } catch (error) {
             console.error('Failed to update status:', error);
-            setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+            alert(error.response?.data?.message || 'Unable to update booking status. Please try again.');
         }
     };
 

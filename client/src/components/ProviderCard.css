@@ -48,6 +48,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    min-width: 0;
 }
 
 .provider-name-row {
@@ -61,6 +62,7 @@
     margin: 0;
     font-size: 1.15rem;
     color: #1a1a2e;
+    overflow-wrap: anywhere;
 }
 
 .verified-badge {
@@ -75,7 +77,7 @@
     margin-bottom: 0.2rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
 }
 
 .provider-location {
@@ -111,6 +113,7 @@
     color: #555;
     font-size: 0.9rem;
     margin-bottom: 1rem;
+    flex-wrap: wrap;
 }
 
 .separator {
@@ -127,6 +130,7 @@
     display: flex;
     gap: 0.8rem;
     margin-top: auto;
+    flex-wrap: wrap;
 }
 
 .btn-book,
@@ -144,6 +148,8 @@ a.btn-call {
     font-weight: 600;
     font-size: 0.9rem;
     transition: transform 0.2s, box-shadow 0.2s;
+    min-width: 0;
+    white-space: nowrap;
 }
 
 .btn-book {
@@ -172,6 +178,7 @@ a.btn-call {
         flex-direction: column;
         align-items: center;
         text-align: center;
+        padding: 1.2rem;
     }
 
     .provider-location {
@@ -184,5 +191,11 @@ a.btn-call {
 
     .card-actions {
         width: 100%;
+    }
+
+    .btn-book,
+    .btn-call,
+    a.btn-call {
+        min-width: 132px;
     }
 }

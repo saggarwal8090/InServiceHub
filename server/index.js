@@ -21,43 +21,81 @@ if (!process.env.VERCEL) {
 
 const app = express();
 const port = process.env.PORT || 5001;
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
 const isProduction = process.env.NODE_ENV === 'production';
+const JWT_SECRET = process.env.JWT_SECRET || (isProduction ? '' : 'development_only_secret_change_before_production_32_chars');
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
+const JWT_ISSUER = 'inservicehub-api';
+const JWT_AUDIENCE = 'inservicehub-client';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 
-// SECURITY: Warn if using default JWT secret in production
-if (isProduction && JWT_SECRET === 'your_jwt_secret') {
-    console.error('\n⚠️  WARNING: Using default JWT_SECRET in production is INSECURE!');
-    console.error('   Set a strong JWT_SECRET environment variable before deploying.\n');
+if (isProduction && (!JWT_SECRET || JWT_SECRET.length < 32 || JWT_SECRET === 'your_jwt_secret')) {
+    throw new Error('JWT_SECRET must be set to a strong value of at least 32 characters in production.');
 }
 
 // ========== SECURITY MIDDLEWARE ==========
 
-// Helmet — sets secure HTTP headers
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+const normalizeOrigins = (...values) => values
+    .filter(Boolean)
+    .flatMap(value => String(value).split(','))
+    .map(value => value.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
+const allowedOrigins = normalizeOrigins(
+    process.env.CLIENT_ORIGINS,
+    process.env.CLIENT_URL,
+    process.env.FRONTEND_URL,
+    process.env.RENDER_EXTERNAL_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    !isProduction ? 'http://localhost:5173,http://localhost:5174,http://localhost:3000' : null
+);
+
+const isAllowedOrigin = (origin) => {
+    if (!origin) return true;
+    const normalizedOrigin = origin.replace(/\/$/, '');
+
+    if (allowedOrigins.includes(normalizedOrigin)) return true;
+
+    return !isProduction && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(normalizedOrigin);
+};
+
+// Helmet sets secure HTTP headers.
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+            "default-src": ["'self'"],
+            "script-src": ["'self'", "https://accounts.google.com"],
+            "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            "font-src": ["'self'", "https://fonts.gstatic.com"],
+            "img-src": ["'self'", "data:", "https://ui-avatars.com", "https://lh3.googleusercontent.com"],
+            "connect-src": ["'self'", ...allowedOrigins],
+            "frame-src": ["'self'", "https://accounts.google.com"],
+            "object-src": ["'none'"],
+            "base-uri": ["'self'"],
+            "form-action": ["'self'"],
+            "upgrade-insecure-requests": isProduction ? [] : null,
+        },
+    },
     crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
 }));
 
 // Compression — gzip responses
 app.use(compression());
 
-// CORS — in production the SPA and API are on the same origin, so CORS is relaxed
-// In development, allow known dev server origins
-if (isProduction) {
-    // In production, same-origin requests don't need CORS
-    // But allow the configured CLIENT_URL if set (for separate frontend deploys)
-    app.use(cors({
-        origin: true,
-        credentials: true,
-    }));
-} else {
-    app.use(cors({
-        origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
-        credentials: true,
-    }));
-}
+app.use(cors({
+    origin(origin, callback) {
+        if (isAllowedOrigin(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    optionsSuccessStatus: 204,
+}));
 
 // Rate Limiting — prevent abuse
 const apiLimiter = rateLimit({
@@ -139,10 +177,12 @@ const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) return res.sendStatus(401);
+    if (!token) return res.status(401).json({ message: 'Authentication required.' });
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
+    jwt.verify(token, JWT_SECRET, { issuer: JWT_ISSUER, audience: JWT_AUDIENCE }, (err, user) => {
+        if (err || !user?.id || !user?.role) {
+            return res.status(403).json({ message: 'Invalid or expired session.' });
+        }
         req.user = user;
         next();
     });
@@ -153,6 +193,25 @@ const authenticateToken = (req, res, next) => {
 const publicUserFields = `
     id, name, email, phone, role, city, is_online, auth_provider, avatar_url, created_at
 `;
+
+const cleanString = (value, maxLength = 255) => {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    return trimmed.slice(0, maxLength);
+};
+
+const normalizeEmail = (value) => cleanString(value, 320)?.toLowerCase() || null;
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const isValidId = (value) => /^\d+$/.test(String(value));
+const parseAmount = (value, fallback = 0) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+    return Math.min(parsed, 100000);
+};
+
+const isValidDate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+const isValidTime = (value) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 
 function makeAuthResponse(user, extra = {}) {
     return {
@@ -192,7 +251,11 @@ async function ensureProviderProfile(userId, serviceCategory) {
 }
 
 function issueToken(user) {
-    return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+    return jwt.sign(
+        { id: user.id, role: user.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN, issuer: JWT_ISSUER, audience: JWT_AUDIENCE }
+    );
 }
 
 async function verifyGoogleCredential(credential) {
@@ -223,30 +286,43 @@ async function verifyGoogleCredential(credential) {
 }
 
 app.post('/api/register', async (req, res) => {
-    const { name, email, password, role, city, phone, service_category } = req.body;
+    const { password } = req.body;
+    const name = cleanString(req.body.name, 120);
+    const email = normalizeEmail(req.body.email);
+    const role = cleanString(req.body.role, 20);
+    const city = cleanString(req.body.city, 100);
+    const phone = cleanString(req.body.phone, 30);
+    const service_category = cleanString(req.body.service_category, 100);
+
     try {
         // Input validation
         if (!name || !email || !password || !role) {
             return res.status(400).json({ message: 'Name, email, password, and role are required.' });
         }
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ message: 'Enter a valid email address.' });
+        }
         if (!['customer', 'provider'].includes(role)) {
             return res.status(400).json({ message: 'Invalid role.' });
         }
-        if (password.length < 6) {
-            return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+        if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+            return res.status(400).json({ message: 'Password must be between 8 and 128 characters.' });
+        }
+        if (role === 'provider' && !service_category) {
+            return res.status(400).json({ message: 'Service category is required for providers.' });
         }
 
-        const userCheck = await db.get('SELECT * FROM users WHERE email = ?', [email.toLowerCase().trim()]);
+        const userCheck = await db.get('SELECT * FROM users WHERE email = ?', [email]);
         if (userCheck) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 12);
+        const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
         const newUser = await db.get(
             `INSERT INTO users (name, email, password, role, city, phone, is_online, auth_provider)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              RETURNING ${publicUserFields}`,
-            [name, email.toLowerCase().trim(), hashedPassword, role, city, phone, role === 'provider', 'password']
+            [name, email, hashedPassword, role, city, phone, role === 'provider', 'password']
         );
 
         if (role === 'provider') {
@@ -262,13 +338,17 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const { password } = req.body;
     try {
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required.' });
         }
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
 
-        const user = await db.get('SELECT * FROM users WHERE email = ?', [email.toLowerCase().trim()]);
+        const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -291,7 +371,11 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/auth/google', async (req, res) => {
-    const { credential, role = 'customer', city, phone, service_category } = req.body;
+    const credential = cleanString(req.body.credential, 5000);
+    const role = cleanString(req.body.role, 20) || 'customer';
+    const city = cleanString(req.body.city, 100);
+    const phone = cleanString(req.body.phone, 30);
+    const service_category = cleanString(req.body.service_category, 100);
 
     try {
         if (!credential) {
@@ -300,6 +384,9 @@ app.post('/api/auth/google', async (req, res) => {
 
         if (!['customer', 'provider'].includes(role)) {
             return res.status(400).json({ message: 'Invalid role.' });
+        }
+        if (role === 'provider' && !service_category) {
+            return res.status(400).json({ message: 'Service category is required for providers.' });
         }
 
         const googleProfile = await verifyGoogleCredential(credential);
@@ -352,10 +439,12 @@ app.post('/api/auth/google', async (req, res) => {
 // ========== PUBLIC ROUTES ==========
 
 app.get('/api/providers', async (req, res) => {
-    const { city, service, online } = req.query;
+    const city = cleanString(req.query.city, 100);
+    const service = cleanString(req.query.service, 100);
+    const online = req.query.online;
     try {
         let query = `
-        SELECT u.id, u.name, u.city, u.phone, u.is_online,
+        SELECT u.id, u.name, u.city, u.is_online,
                pd.experience, pd.rating, pd.verified, pd.description, pd.total_reviews,
                s.service_name, s.price, s.id as service_id
         FROM users u
@@ -388,8 +477,10 @@ app.get('/api/providers', async (req, res) => {
 app.get('/api/providers/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        if (!isValidId(id)) return res.status(400).json({ message: 'Invalid provider id' });
+
         const providerQuery = `
-            SELECT u.id, u.name, u.city, u.phone, u.is_online,
+            SELECT u.id, u.name, u.city, u.is_online,
                    pd.experience, pd.rating, pd.verified, pd.description, pd.total_reviews
             FROM users u
             JOIN provider_details pd ON u.id = pd.user_id
@@ -467,8 +558,19 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 
 // UPDATE PROFILE
 app.put('/api/profile', authenticateToken, async (req, res) => {
-    const { name, phone, city, experience, price, description, service_name } = req.body;
+    const name = cleanString(req.body.name, 120);
+    const phone = cleanString(req.body.phone, 30);
+    const city = cleanString(req.body.city, 100);
+    const experience = Math.min(Math.max(parseInt(req.body.experience, 10) || 0, 0), 50);
+    const price = parseAmount(req.body.price);
+    const description = cleanString(req.body.description, 1000);
+    const service_name = cleanString(req.body.service_name, 100);
+
     try {
+        if (!name) {
+            return res.status(400).json({ message: 'Name is required.' });
+        }
+
         await db.run(
             'UPDATE users SET name = ?, phone = ?, city = ? WHERE id = ?',
             [name, phone, city, req.user.id]
@@ -508,8 +610,8 @@ app.put('/api/change-password', authenticateToken, async (req, res) => {
         const user = await db.get('SELECT password, google_id FROM users WHERE id = ?', [req.user.id]);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (!newPassword || newPassword.length < 6) {
-            return res.status(400).json({ message: 'New password must be at least 6 characters' });
+        if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
+            return res.status(400).json({ message: 'New password must be between 8 and 128 characters' });
         }
 
         if (user.password) {
@@ -519,7 +621,7 @@ app.put('/api/change-password', authenticateToken, async (req, res) => {
             }
         }
 
-        const hashed = await bcrypt.hash(newPassword, 12);
+        const hashed = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
         await db.run(
             `UPDATE users
              SET password = ?,
@@ -552,19 +654,50 @@ app.put('/api/toggle-online', authenticateToken, async (req, res) => {
 
 // BROADCAST BOOKING
 app.post('/api/bookings', authenticateToken, async (req, res) => {
-    const { provider_id, service_id, service_type, city, date, time, address, description } = req.body;
+    const provider_id = req.body.provider_id;
+    const service_id = req.body.service_id;
+    const service_type = cleanString(req.body.service_type, 100);
+    const city = cleanString(req.body.city, 100);
+    const date = cleanString(req.body.date, 10);
+    const time = cleanString(req.body.time, 5);
+    const address = cleanString(req.body.address, 500);
+    const description = cleanString(req.body.description, 1000);
+
     try {
-        if (!date || !time || !address) {
+        if (req.user.role !== 'customer') {
+            return res.status(403).json({ message: 'Only customers can create bookings.' });
+        }
+        if (!date || !time || !address || !isValidDate(date) || !isValidTime(time)) {
             return res.status(400).json({ message: 'Date, time, and address are required.' });
         }
 
         if (provider_id) {
+            if (!isValidId(provider_id) || (service_id && !isValidId(service_id))) {
+                return res.status(400).json({ message: 'Invalid provider or service.' });
+            }
+
+            const provider = await db.get('SELECT id, city FROM users WHERE id = ? AND role = ?', [provider_id, 'provider']);
+            if (!provider) {
+                return res.status(400).json({ message: 'Selected provider is not available.' });
+            }
+
+            if (service_id) {
+                const service = await db.get('SELECT id FROM services WHERE id = ? AND provider_id = ?', [service_id, provider_id]);
+                if (!service) {
+                    return res.status(400).json({ message: 'Selected service is not available.' });
+                }
+            }
+
             const newBooking = await db.get(
                 'INSERT INTO bookings (customer_id, provider_id, service_id, date, time, address, description, service_type, city) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
-                [req.user.id, provider_id, service_id, date, time, address, description, service_type || null, city || null]
+                [req.user.id, provider_id, service_id || null, date, time, address, description, service_type, city || provider.city]
             );
             res.json(newBooking);
         } else {
+            if (!service_type || !city) {
+                return res.status(400).json({ message: 'City and service type are required for broadcast requests.' });
+            }
+
             const newBooking = await db.get(
                 'INSERT INTO bookings (customer_id, provider_id, service_id, date, time, address, description, service_type, city, status) VALUES (?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
                 [req.user.id, date, time, address, description, service_type, city, 'pending']
@@ -588,7 +721,7 @@ app.get('/api/booking-requests', authenticateToken, async (req, res) => {
             WHERE u.id = ?
         `, [req.user.id]);
 
-        if (!provider) return res.json([]);
+        if (!provider?.city || !provider?.service_name) return res.json([]);
 
         const requests = await db.all(`
             SELECT b.*, u.name as customer_name, u.phone as customer_phone
@@ -613,17 +746,37 @@ app.put('/api/bookings/:id/accept', authenticateToken, async (req, res) => {
     if (req.user.role !== 'provider') return res.status(403).json({ message: 'Access denied' });
     const { id } = req.params;
     try {
-        const booking = await db.get('SELECT * FROM bookings WHERE id = ? AND provider_id IS NULL AND status = ?', [id, 'pending']);
-        if (!booking) {
-            return res.status(400).json({ message: 'This request has already been accepted by another provider.' });
+        if (!isValidId(id)) {
+            return res.status(400).json({ message: 'Invalid booking id.' });
         }
 
-        const service = await db.get('SELECT id FROM services WHERE provider_id = ? LIMIT 1', [req.user.id]);
+        const provider = await db.get(`
+            SELECT u.city, s.id as service_id, s.service_name
+            FROM users u
+            LEFT JOIN services s ON u.id = s.provider_id
+            WHERE u.id = ?
+            LIMIT 1
+        `, [req.user.id]);
+
+        if (!provider?.city || !provider?.service_name) {
+            return res.status(400).json({ message: 'Complete your city and service profile before accepting requests.' });
+        }
 
         const updated = await db.get(
-            'UPDATE bookings SET provider_id = ?, service_id = ?, status = ? WHERE id = ? RETURNING *',
-            [req.user.id, service ? service.id : null, 'accepted', id]
+            `UPDATE bookings
+             SET provider_id = ?, service_id = ?, status = ?
+             WHERE id = ?
+               AND provider_id IS NULL
+               AND status = ?
+               AND LOWER(city) = LOWER(?)
+               AND LOWER(service_type) = LOWER(?)
+             RETURNING *`,
+            [req.user.id, provider.service_id || null, 'accepted', id, 'pending', provider.city, provider.service_name]
         );
+
+        if (!updated) {
+            return res.status(400).json({ message: 'This request is no longer available.' });
+        }
 
         res.json(updated);
     } catch (err) {
@@ -675,16 +828,39 @@ app.get('/api/my-bookings', authenticateToken, async (req, res) => {
 
 // Update Booking Status
 app.put('/api/bookings/:id/status', authenticateToken, async (req, res) => {
-    const { status } = req.body;
+    const status = cleanString(req.body.status, 20);
     const { id } = req.params;
 
+    if (!isValidId(id)) {
+        return res.status(400).json({ message: 'Invalid booking id.' });
+    }
     if (!['pending', 'accepted', 'completed', 'cancelled'].includes(status)) {
         return res.status(400).json({ message: 'Invalid status.' });
     }
 
     try {
-        await db.run('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
-        res.json({ message: 'Status updated' });
+        const booking = await db.get('SELECT id, customer_id, provider_id, status FROM bookings WHERE id = ?', [id]);
+        if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+
+        const isProviderOwner = req.user.role === 'provider' && Number(booking.provider_id) === Number(req.user.id);
+        const isCustomerOwner = req.user.role === 'customer' && Number(booking.customer_id) === Number(req.user.id);
+        const isAdmin = req.user.role === 'admin';
+
+        if (!isProviderOwner && !isCustomerOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+        if (booking.status === 'completed' && status !== 'completed' && !isAdmin) {
+            return res.status(400).json({ message: 'Completed bookings cannot be changed.' });
+        }
+        if (isCustomerOwner && status !== 'cancelled') {
+            return res.status(403).json({ message: 'Customers can only cancel their own bookings.' });
+        }
+        if (isProviderOwner && !['accepted', 'completed', 'cancelled'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid provider status transition.' });
+        }
+
+        const updated = await db.get('UPDATE bookings SET status = ? WHERE id = ? RETURNING *', [status, id]);
+        res.json({ message: 'Status updated', booking: updated });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error.' });
@@ -693,14 +869,27 @@ app.put('/api/bookings/:id/status', authenticateToken, async (req, res) => {
 
 // Add Review
 app.post('/api/reviews', authenticateToken, async (req, res) => {
-    const { booking_id, rating, comment } = req.body;
+    const booking_id = req.body.booking_id;
+    const rating = Number(req.body.rating);
+    const comment = cleanString(req.body.comment, 1000);
     try {
-        if (!rating || rating < 1 || rating > 5) {
+        if (!isValidId(booking_id)) {
+            return res.status(400).json({ message: 'Invalid booking.' });
+        }
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
             return res.status(400).json({ message: 'Rating must be between 1 and 5.' });
         }
 
         const booking = await db.get('SELECT * FROM bookings WHERE id = ? AND customer_id = ?', [booking_id, req.user.id]);
         if (!booking) return res.status(400).json({ message: 'Invalid booking' });
+        if (booking.status !== 'completed') {
+            return res.status(400).json({ message: 'You can review only completed bookings.' });
+        }
+
+        const existingReview = await db.get('SELECT id FROM reviews WHERE booking_id = ?', [booking_id]);
+        if (existingReview) {
+            return res.status(400).json({ message: 'This booking has already been reviewed.' });
+        }
 
         await db.run(
             'INSERT INTO reviews (booking_id, rating, comment) VALUES (?, ?, ?)',
@@ -733,12 +922,14 @@ app.post('/api/reviews', authenticateToken, async (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
-    let supabaseStatus = 'unknown';
-    try {
-        const { data, error } = await supabase.from('users').select('id').limit(1);
-        supabaseStatus = error ? `error: ${error.message}` : 'ok';
-    } catch (err) {
-        supabaseStatus = `error: ${err.message}`;
+    let supabaseStatus = supabase ? 'unknown' : 'not_configured';
+    if (supabase) {
+        try {
+            const { error } = await supabase.from('users').select('id').limit(1);
+            supabaseStatus = error ? 'error' : 'ok';
+        } catch (err) {
+            supabaseStatus = 'error';
+        }
     }
 
     res.json({ 
@@ -747,7 +938,28 @@ app.get('/api/health', async (req, res) => {
         supabase: supabaseStatus,
         timestamp: new Date().toISOString() 
     });
+});
 
+// GET PLATFORM STATS
+app.get('/api/stats/dashboard', async (req, res) => {
+    try {
+        const providerCount = await db.get("SELECT COUNT(*) as count FROM users WHERE role = 'provider'");
+        const customerCount = await db.get("SELECT COUNT(*) as count FROM users WHERE role = 'customer'");
+        const bookingCount = await db.get("SELECT COUNT(*) as count FROM bookings");
+        const cityCount = await db.get("SELECT COUNT(DISTINCT city) as count FROM users WHERE city IS NOT NULL");
+        const avgRating = await db.get("SELECT AVG(rating) as avg FROM provider_details WHERE rating > 0");
+
+        res.json({
+            providers: Number(providerCount.count),
+            customers: Number(customerCount.count),
+            bookings: Number(bookingCount.count),
+            cities: Number(cityCount.count),
+            rating: Number(avgRating.avg || 0).toFixed(1)
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching stats' });
+    }
 });
 
 
@@ -796,6 +1008,9 @@ if (!process.env.VERCEL) {
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
+    if (err.message === 'Not allowed by CORS') {
+        return res.status(403).json({ message: 'Origin is not allowed.' });
+    }
     if (isProduction) {
         res.status(500).json({ message: 'Something went wrong. Please try again.' });
     } else {

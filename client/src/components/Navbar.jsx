@@ -10,6 +10,15 @@ const Navbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
+    React.useEffect(() => {
+        setIsOpen(false);
+    }, [location.pathname]);
+
+    React.useEffect(() => {
+        document.body.classList.toggle('nav-open', isOpen);
+        return () => document.body.classList.remove('nav-open');
+    }, [isOpen]);
+
     const handleLogout = () => {
         logout();
         setIsOpen(false);
@@ -21,18 +30,25 @@ const Navbar = () => {
     const handleNavClick = () => setIsOpen(false);
 
     return (
-        <nav className="navbar">
+        <nav className={`navbar ${isOpen ? 'menu-open' : ''}`}>
             <div className="nav-container">
                 <Link to="/" className="logo" onClick={handleNavClick}>
                     <span className="logo-icon">🏠</span>
                     <span className="logo-text">InServiceHub</span>
                 </Link>
 
-                <div className="menu-icon" onClick={() => setIsOpen(!isOpen)} aria-label="Toggle menu">
+                <button
+                    type="button"
+                    className="menu-icon"
+                    onClick={() => setIsOpen(!isOpen)}
+                    aria-label="Toggle navigation menu"
+                    aria-expanded={isOpen}
+                    aria-controls="primary-navigation"
+                >
                     {isOpen ? <X size={24} /> : <Menu size={24} />}
-                </div>
+                </button>
 
-                <ul className={`nav-links ${isOpen ? 'active' : ''}`}>
+                <ul id="primary-navigation" className={`nav-links ${isOpen ? 'active' : ''}`}>
                     <li>
                         <Link to="/" className={isActive('/') ? 'nav-active' : ''} onClick={handleNavClick}>
                             <Home size={16} /> Home
@@ -66,7 +82,7 @@ const Navbar = () => {
                                     </div>
                                     <div className="user-details">
                                         <span className="user-name">{user.name}</span>
-                                        <span className="user-role">{user.role === 'provider' ? '🔧 Provider' : '👤 Customer'}</span>
+                                        <span className="user-role">{user.role === 'provider' ? 'Provider' : 'Customer'}</span>
                                     </div>
                                 </Link>
                                 <button onClick={handleLogout} className="btn-logout" title="Logout">
