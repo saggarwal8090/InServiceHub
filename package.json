@@ -4,7 +4,7 @@
     "@supabase/supabase-js": "^2.105.1"
   },
   "scripts": {
-    "build": "npm run build --prefix client",
+    "build": "cd client && npm install && npm run build",
     "start": "node server/index.js",
     "server": "node server/index.js",
     "client": "npm run dev --prefix client",
