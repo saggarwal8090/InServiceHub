@@ -8,7 +8,7 @@ const indianCities = [
     'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai',
     'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow',
     'Chandigarh', 'Kochi', 'Indore', 'Bhopal', 'Nagpur',
-    'Surat', 'Vadodara', 'Noida', 'Gurgaon', 'Ghaziabad', 'Saharanpur',
+    'Surat', 'Vadodara', 'Noida', 'Gurgaon', 'Ghaziabad', 'Saharanpur'
 ];
 
 const services = [
